@@ -6,26 +6,30 @@ class Program
 {
     private static InterceptKeys interceptor;
     private static StatusWindow statusWindow;
+    private static Gui gui;
     private static Config config;
-
-    private static bool hotkeysEnabled, hotkeysPolling;
 
     static void Main()
     {
         config = Config.Load();
+        KeyMapper.SetBindings(config);
 
         interceptor = new();
-        interceptor.OnPress += OnKeyPressed;
+        interceptor.OnPress += KeyMapper.OnKeyPressed;
         interceptor.Register();
 
-        hotkeysEnabled = true;
+        KeyMapper.hotkeysEnabled = true;
 
         statusWindow = new(config.WindowLocation);
         statusWindow.OnMoved += StatusWindow_OnMoved;
 
+        gui = new();
+
         new Task(Monitor).Start();
 
-        Application.Run(statusWindow);
+        // Application.Run(gui);
+        // Application.Run(statusWindow);
+        Application.Run(new MultiFormContext(statusWindow, gui));
 
         interceptor.Dispose();
     }
@@ -41,13 +45,13 @@ class Program
     {
         while (true)
         {
-            hotkeysPolling = WarcraftMonitor.IsPlaying();
+            KeyMapper.hotkeysPolling = WarcraftMonitor.IsPlaying();
 
             StatusWindow.IndicatorStatus indicator;
 
-            if (!hotkeysEnabled)
+            if (!KeyMapper.hotkeysEnabled)
                 indicator = StatusWindow.IndicatorStatus.Disabled;
-            else if (hotkeysPolling)
+            else if (KeyMapper.hotkeysPolling)
                 indicator = StatusWindow.IndicatorStatus.Polling;
             else
                 indicator = StatusWindow.IndicatorStatus.Idle;
@@ -58,30 +62,9 @@ class Program
         }
     }
 
-    private static readonly Dictionary<int, VirtualNumpad.Numpad> bindings = new()
-    {
-        {  84,  VirtualNumpad.Numpad._7 }, // t
-        {  89,  VirtualNumpad.Numpad._8 }, // y
-        {  71,  VirtualNumpad.Numpad._4 }, // g
-        {  72,  VirtualNumpad.Numpad._5 }, // h
-        {  66,  VirtualNumpad.Numpad._1 }, // b
-        {  78,  VirtualNumpad.Numpad._2 }, // n
-    };
-
-    private static void OnKeyPressed(int vCode)
-    {
-        // Home key.
-        if (vCode == 36)
-        {
-            hotkeysEnabled = !hotkeysEnabled;
-        }
-
-        if (hotkeysEnabled && hotkeysPolling)
-        {
-            if (bindings.ContainsKey(vCode))
-            {
-                VirtualNumpad.PressDown(bindings[vCode]);
-            }
-        }
-    }
+    // private static readonly Dictionary<Keys, VirtualNumpad.Numpad> bindings = new()
+    // {
+    //     {  Keys.Oem6,  VirtualNumpad.Numpad._7 },
+    //     {  Keys.N,  VirtualNumpad.Numpad._2 },
+    // };
 }
